@@ -17,13 +17,13 @@ jobs:
             python-version: 3.13
             nuitka: true
             clang: true
-            clang-version: 21.1.0
+            clang-version: 20.1.4
           - os: windows-latest
             platform: windows
             python-version: 3.12   # https://github.com/Nuitka/Nuitka/issues/3234
             nuitka: true
             clang: false   # https://github.com/Nuitka/Nuitka/issues/3370
-            clang-version: 21.1.0
+            clang-version: 20.1.4
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
