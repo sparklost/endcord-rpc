@@ -5,6 +5,12 @@ import signal
 import sys
 import time
 
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"   # fix for https://github.com/Nuitka/Nuitka/issues/3442
+if sys.platform == "linux":
+    cert_path = "/etc/ssl/certs/ca-certificates.crt"
+    if os.path.exists(cert_path):
+        os.environ["SSL_CERT_FILE"] = cert_path
+
 from endcord_rpc import client_properties
 from endcord_rpc.discord import Discord
 from endcord_rpc.game_detection import GameDetection
