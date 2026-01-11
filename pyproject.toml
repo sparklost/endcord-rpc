@@ -1,0 +1,25 @@
+[project]
+name = "endcord-rpc"
+version = "1.1.8"
+description = "Feature rich Discord TUI client."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "discord-protos>=0.0.2",
+    "orjson>=3.11.5",
+    "pysocks>=1.7.1",
+    "python-socks>=2.8.0",
+    "psutil>=7.2.1; sys_platform != 'linux'",
+    "pywin32>=311; sys_platform == 'win32'",
+    "pywin32-ctypes>=0.2.3; sys_platform == 'win32'",
+    "urllib3>=2.6.3",
+    "websocket-client>=1.9.0",
+]
+
+[dependency-groups]
+build = [
+    "cython>=3.2.4",
+    "nuitka>=2.8.9",
+    "pyinstaller>=6.17.0",
+    "setuptools>=80.9.0",
+]
