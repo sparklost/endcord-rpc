@@ -160,13 +160,6 @@ def build_with_nuitka(onedir, clang, mingw):
         options = []
     elif sys.platform == "win32":
         options = ["--assume-yes-for-downloads"]
-        hidden_imports += [
-            "--include-package=winrt.windows.foundation",
-            "--include-package=winrt.windows.ui.notifications",
-            "--include-package=winrt.windows.data.xml.dom",
-            "--include-package=win32timezone",
-        ]
-        package_data += ["--include-package-data=winrt"]
     elif sys.platform == "darwin":
         options = [
             f"--macos-app-name={PKGNAME}",
