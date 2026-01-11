@@ -50,12 +50,7 @@ jobs:
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'
-        run: sudo apt update --fix-missing && sudo apt install -y patchelf ccache lld
-
-      - name: Install Windows system dependencies
-        if: matrix.platform == 'windows'
-        run: choco install ccache -y
-        shell: powershell
+        run: sudo apt update --fix-missing && sudo apt install -y patchelf lld
 
       - name: Install dependencies with uv
         run: uv sync --all-groups
