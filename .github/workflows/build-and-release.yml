@@ -1,0 +1,144 @@
+name: Build and Release
+run-name: ${{ github.workflow }} for ${{ github.ref_name }}
+on:
+  push:
+    tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}, ${{ matrix.python-version }}${{ matrix.clang && format(', {0}', matrix.clang-version) || '' }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            python-version: 3.13
+            nuitka: true
+            clang: true
+            clang-version: 21.1.3
+          - os: windows-latest
+            platform: windows
+            python-version: 3.12   # https://github.com/Nuitka/Nuitka/issues/3234
+            nuitka: true
+            clang: false   # https://github.com/Nuitka/Nuitka/issues/3370
+            clang-version: 21.1.3
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        if: ${{ matrix.clang }}
+        with:
+          version: ${{ matrix.clang-version }}
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: sudo apt update --fix-missing && sudo apt install -y patchelf ccache lld
+
+      - name: Install Windows system dependencies
+        if: matrix.platform == 'windows'
+        run: choco install ccache -y
+        shell: powershell
+
+      - name: Install dependencies with uv
+        run: uv sync --all-groups
+
+      - name: Run build script
+        shell: bash
+        run: |
+            args=()
+            [[ "${{ matrix.nuitka }}" == "true" ]] && args+=("--nuitka")
+            [[ "${{ matrix.clang }}" == "true" ]] && args+=("--clang")
+            uv run build.py "${args[@]}"
+
+      - name: Make binaries executable
+        if: matrix.platform == 'linux'
+        run: chmod +x ./dist/endcord-rpc || true
+
+      - name: Archive files
+        shell: bash
+        run: |
+          version=${GITHUB_REF#refs/tags/}
+          extra="README.md LICENSE"
+          cd dist
+          cp ../{README.md,LICENSE} .
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            tar -czf "endcord-rpc-$version-${{ matrix.platform }}.tar.gz" endcord-rpc $extra
+          else
+            7z a "endcord-rpc-$version-${{ matrix.platform }}.zip" endcord-rpc.exe $extra
+          fi
+          cd ..
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            ./dist/*.zip
+            ./dist/*.tar.gz
+          compression-level: 0
+
+      - name: Delete previous workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 1
+          delete_workflow_pattern: build-and-release
+
+
+  draft-release:
+    name: Draft GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: ./dist
+          merge-multiple: true
+
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release attestation
+        uses: actions/attest-build-provenance@v3.0.0
+        with:
+          subject-path: "dist/*"
+
+      - name: Draft a release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: '${{ steps.extract_version.outputs.version }} [DRAFTED BY CI]'
+          tag_name: '${{ steps.extract_version.outputs.version }}'
+          target_commitish: ${{ github.sha }}
+          draft: true
+          prerelease: ${{ contains(steps.extract_version.outputs.version, 'dev') }}
+          files: dist/*
+          generate_release_notes: true

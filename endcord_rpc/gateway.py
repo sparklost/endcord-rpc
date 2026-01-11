@@ -580,7 +580,7 @@ class Gateway():
         return self.state
 
 
-    def update_presence(self, status, custom_status=None, custom_status_emoji=None, activities=None):
+    def update_presence(self, status, custom_status=None, custom_status_emoji=None, activities=None, afk=False):
         """Update client status. Statuses: 'online', 'idle', 'dnd', 'invisible', 'offline'"""
         if self.legacy:
             return   # spacebar_fix - gateway returns error if this event is sent
@@ -602,7 +602,7 @@ class Gateway():
             "op": 3,
             "d": {
                 "status": status,
-                "afk": "false",
+                "afk": afk,
                 "since": 0,
                 "activities": all_activities,
             },

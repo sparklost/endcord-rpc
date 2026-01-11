@@ -1,6 +1,7 @@
 # Endcord-RPC
 Small RPC server made from parts of endcord. Provides Rich Presence and game detection only.
 
+
 ## Features
 - Rich Presence
 - Game detection
@@ -79,6 +80,8 @@ Settings, logs and data location:
     Default user agent is Firefox for `"anonymous"` and discord desktop client for `default` client properties.  
     User agent should not be changed unless the [default ones](https://github.com/sparklost/endcord/blob/main/endcord/client_properties.py) are very outdated.  
     Setting wrong user agent can make you more suspicious to discord spam filter! Make sure user agent string matches your OS.  
+
+To set "debug" log level, run `export LOG_LEVEL=DEBUG ` before starting endcord-rpc.
 
 
 ### Token

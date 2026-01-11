@@ -220,6 +220,7 @@ def main():
                 custom_status=my_status["custom_status"],
                 custom_status_emoji=my_status["custom_status_emoji"],
                 activities=my_activities,
+                afk=True,   # so other clients can receive notifications
             )
 
         # send new detectable games activities
@@ -235,6 +236,7 @@ def main():
                     custom_status=my_status["custom_status"],
                     custom_status_emoji=my_status["custom_status_emoji"],
                     activities=my_activities,
+                    afk=True,   # so other clients can receive notifications
                 )
 
         # check gateway for errors
