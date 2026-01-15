@@ -1,5 +1,5 @@
 # Endcord-RPC
-Small RPC server made from parts of endcord. Provides Rich Presence and game detection only.
+Small RPC server made from parts of [endcord](https://github.com/sparklost/endcord). Provides Rich Presence and game detection only.
 
 
 ## Features

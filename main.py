@@ -35,13 +35,13 @@ run = False
 if sys.platform == "linux":
     path = os.environ.get("XDG_DATA_HOME", "")
     if path.strip():
-        config_path = os.path.join(path, f"{APP_NAME}/")
+        config_path = os.path.join(path, f"{APP_NAME}")
     else:
-        config_path = f"~/.config/{APP_NAME}/"
+        config_path = f"~/.config/{APP_NAME}"
 elif sys.platform == "win32":
-    config_path = os.path.join(os.path.normpath(f"{os.environ["USERPROFILE"]}/AppData/Local/{APP_NAME}/"), "")
+    config_path = os.path.join(os.environ["LOCALAPPDATA"], APP_NAME)
 elif sys.platform == "darwin":
-    config_path = f"~/Library/Application Support/{APP_NAME}/"
+    config_path = f"~/Library/Application Support/{APP_NAME}"
 else:
     sys.exit(f"Unsupported platform: {sys.platform}")
 config_path = os.path.expanduser(config_path)
