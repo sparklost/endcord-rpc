@@ -18,7 +18,8 @@ GATEWAY_RATE_LIMIT_SAME = 60   # delay between each same activity that rpc serve
 REQUEST_DELAY = 1.5   # delay to decrease error 429 - too many requests
 logger = logging.getLogger(__name__)
 if sys.platform == "linux":
-    DISCORD_SOCKET = f"/run/user/{os.getuid()}/discord-ipc-0"
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/run/user/{os.getuid()}")
+    DISCORD_SOCKET = os.path.join(runtime_dir, "discord-ipc-0")
 else:
     DISCORD_SOCKET = ""
 DISCORD_WIN_PIPE = r"\\?\pipe\discord-ipc-0"
@@ -101,7 +102,6 @@ class RPC:
         self.activities = []
         if user["bot"]:
             logger.warning("RPC server cannot be started for bot accounts")
-            print("RPC server cannot be started for bot accounts")
             return
         self.run = True
 
@@ -116,7 +116,6 @@ class RPC:
             self.rpc_thread.start()
         else:
             logger.warning(f"RPC server cannot be started on this platform: {sys.platform}")
-            print(f"RPC server cannot be started on this platform: {sys.platform}")
             return
 
 
@@ -189,7 +188,6 @@ class RPC:
             rpc_data = self.discord.get_rpc_app(app_id)
             rpc_assets = self.discord.get_rpc_app_assets(app_id)
             logger.info(f"RPC client connected: {rpc_data["name"]}")
-            print(f"RPC client connected: {rpc_data["name"]}")
             if rpc_data and rpc_assets:
                 send_data(connection, 1, self.dispatch)
                 sent_time = time.time() - (GATEWAY_RATE_LIMIT + 1)
@@ -201,19 +199,13 @@ class RPC:
                     logger.debug(f"Received: {json.dumps(data, indent=2)}")
 
                     if data["cmd"] == "SET_ACTIVITY":
-                        # prevent sending same activity too often
-                        if data["args"]["activity"] == prev_activity and time.time() - sent_time < GATEWAY_RATE_LIMIT_SAME:
-                            response = self.build_response(data)
-                            send_data(connection, op, response)
-                            return
-                        prev_activity = data["args"]["activity"]
-
                         # prevent sending presences too often
-                        while time.time() - sent_time < GATEWAY_RATE_LIMIT:
+                        delay = GATEWAY_RATE_LIMIT_SAME if data["args"]["activity"] == prev_activity else GATEWAY_RATE_LIMIT
+                        if time.time() - sent_time < delay:
                             response = self.build_response(data)
                             send_data(connection, op, response)
-                            continue
-                        sent_time = time.time()
+                            prev_activity = data["args"]["activity"]
+                            sent_time = time.time()
 
                         activity = data["args"]["activity"]
                         if not activity:
@@ -309,10 +301,8 @@ class RPC:
 
             else:
                 logger.warning("Failed retrieving RPC app data from discord")
-                print("Failed retrieving RPC app data from discord")
         except Exception as e:
             logger.error(e)
-            print(f"RPC server error: {e}")
 
         # remove presence from list
         if app_id:
@@ -326,13 +316,11 @@ class RPC:
         else:
             connection.close()
         logger.info(f"RPC client disconnected: {rpc_data["name"] if rpc_data else "Unknown"}")
-        print(f"RPC client disconnected: {rpc_data["name"] if rpc_data else "Unknown"}")
 
 
     def server_thread_win(self):
         """Thread that listens for new connections on the named pipe and starts new client_thread for each connection"""
         logger.info("RPC server started")
-        print("RPC server started")
         while self.run:
             try:
                 pipe = win32pipe.CreateNamedPipe(
@@ -349,7 +337,6 @@ class RPC:
                 threading.Thread(target=self.client_thread, daemon=True, args=(pipe,)).start()
             except pywintypes.error as e:
                 logger.error(f"Named pipe error: {e}")
-                print(f"Named pipe error: {e}")
 
 
     def server_thread_linux(self):
@@ -357,14 +344,12 @@ class RPC:
         if sys.platform in ("linux", "darwin"):
             if not os.path.isdir(os.path.dirname(DISCORD_SOCKET)):
                 logger.warning("Error starting RPC server: could not create socket")
-                print("Error starting RPC server: could not create socket")
                 return
             if os.path.exists(DISCORD_SOCKET):
                 os.unlink(DISCORD_SOCKET)
             self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.server.bind(DISCORD_SOCKET)
         logger.info("RPC server started")
-        print("RPC server started")
         while self.run:
             self.server.listen(1)
             client, address = self.server.accept()
