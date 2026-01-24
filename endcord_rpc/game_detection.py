@@ -325,7 +325,7 @@ class GameDetection:
 
         # download new detectable apps list if N days passed and resource changed on the server
         old_path, old_etag, save_time = find_detectable_apps_file(self.config_path)
-        if time.time() - save_time > self.download_delay:
+        if self.download_delay == 0 or time.time() - save_time > self.download_delay:
             path, etag = self.discord.get_detectable_apps(self.config_path, old_etag)
             if not path:
                 logger.info("Could not start game detection service: failed to download detectable applications list")
@@ -337,6 +337,8 @@ class GameDetection:
                 if old_path:
                     os.remove(old_path)
             del (old_path, old_etag)
+        else:
+            path = old_path
 
         # load cached processes and remove outdated
         self.cache = load_json("detected_apps_cache.json", self.config_path, {})   # {proc_path: [app_id, app_name, app_path, last_seen]...}

@@ -64,6 +64,8 @@ Settings, logs and data location:
 - `"games_blacklist": []`  
     A list of apps to not be sent as discord presence. List must be of format: `["APP_ID_1", "APP_ID_2"]`.  
     `APP_ID_N` can be obtained in lig or in console when this app gets detected by endcord-rpc.
+- `game_detection_download_delay = 7`  
+    How often detectable games list will be checked for updates. Value is in days. Set to 0 to check on each run.
 - `"proxy": None`  
     Proxy URL to use, it must be this format: `protocol://host:port`, example: `socks5://localhost:1080`.  
     Supported proxy protocols: `http`, `socks5`.  
