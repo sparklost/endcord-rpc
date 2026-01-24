@@ -4,6 +4,7 @@ import logging
 import os
 import socket
 import ssl
+import time
 import urllib.parse
 
 try:
@@ -260,6 +261,7 @@ class Discord():
         """
         Get and save list (as ndjson) of detectable applications, containing all detectable games.
         Use etag to skip downloading same cached resource.
+        File is saved as: detectable_apps_{etag}_{current_time}.ndjson, where current_time is unix_time/1000
         """
         message_data = None
         url = "/api/v9/applications/detectable"
@@ -275,8 +277,9 @@ class Discord():
             connection.close()
             return None, etag
         if response.status == 200:
+            current_time = int(time.time()/1000)
             etag = response.getheader("ETag")[3:-1]
-            save_path = os.path.expanduser(os.path.join(save_dir, f"detectable_apps_{etag}.ndjson"))
+            save_path = os.path.expanduser(os.path.join(save_dir, f"detectable_apps_{etag}_{current_time}.ndjson"))
             using_orjson = json.__name__ == "orjson"
             if using_orjson:
                 nl = b"\n"
@@ -304,7 +307,7 @@ class Discord():
                     return None, etag
                 return save_path, etag
         elif response.status == 304:   # not modified
-            save_path = os.path.expanduser(os.path.join(save_dir, f"detectable_apps_{etag}.ndjson"))
+            save_path = os.path.expanduser(os.path.join(save_dir, f"detectable_apps_{etag}_{current_time}.ndjson"))
             return save_path, etag
         connection.close()
         return None, etag

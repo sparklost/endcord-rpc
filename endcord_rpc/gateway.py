@@ -286,6 +286,8 @@ class Gateway():
                 if status not in (1000, 1001):
                     logger.warning(f"Gateway status code: {status}, reason: {reason}")
                     print(f"Gateway status code: {status}, reason: {reason}")
+                if status == 4004:
+                    self.run = False
                 self.resumable = status in (4000, 4009)
                 break
             try:

@@ -22,6 +22,7 @@ ERROR_TEXT = "\nUnhandled exception occurred. Please report here: https://github
 DEFAULT_CONFIG = {
   "token": "",
   "game_detection": True,
+  "game_list_download_delay": 7,
   "games_blacklist": [],
   "proxy": None,
   "custom_host": None,
@@ -75,6 +76,7 @@ def main():
     token = config["token"]
     proxy = config["proxy"]
     enable_game_detection = config["game_detection"]
+    download_delay = config.get("game_list_download_delay", 7)
     game_detection_blacklist = config["games_blacklist"]
     if not token:
         sys.exit(f"Token not specified in config: {config_file_path}")
@@ -155,7 +157,7 @@ def main():
     my_user_data = gateway.get_my_user_data()
     rpc = RPC(discord, my_user_data, {"rpc_external": True})
     if enable_game_detection:
-        game_detection = GameDetection(gateway, discord, game_detection_blacklist, config_path)
+        game_detection = GameDetection(gateway, discord, game_detection_blacklist, config_path, download_delay=download_delay)
 
     # perform token update if needed
     new_token = gateway.get_token_update()
