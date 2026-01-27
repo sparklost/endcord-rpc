@@ -450,12 +450,11 @@ class GameDetection:
             time.sleep(GAME_DETECTION_DELAY)
 
 
-    def get_activities(self, force=False):
-        """Get activities for all detected games, only when they changed"""
-        if self.changed or force:
-            self.changed = False
-            return self.activities
-        return None
+    def get_activities(self):
+        """Get activities for all detected games, and if they changed"""
+        cache = self.changed
+        self.changed = False
+        return self.activities, cache
 
 
     def get_detected(self):

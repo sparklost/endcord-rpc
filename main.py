@@ -21,6 +21,7 @@ APP_NAME = "endcord-rpc"
 ERROR_TEXT = "\nUnhandled exception occurred. Please report here: https://github.com/sparklost/endcord-rpc/issues"
 DEFAULT_CONFIG = {
   "token": "",
+  "enable_rpc": True,
   "game_detection": True,
   "game_list_download_delay": 7,
   "games_blacklist": [],
@@ -75,6 +76,7 @@ def main():
     host = config["custom_host"]
     token = config["token"]
     proxy = config["proxy"]
+    enable_rpc = config["rpc"]
     enable_game_detection = config["game_detection"]
     download_delay = config.get("game_list_download_delay", 7)
     game_detection_blacklist = config["games_blacklist"]
@@ -155,7 +157,8 @@ def main():
     )
 
     my_user_data = gateway.get_my_user_data()
-    rpc = RPC(discord, my_user_data, {"rpc_external": True})
+    if enable_rpc:
+        rpc = RPC(discord, my_user_data, {"rpc_external": True})
     if enable_game_detection:
         game_detection = GameDetection(gateway, discord, game_detection_blacklist, config_path, download_delay=download_delay)
 
@@ -214,31 +217,38 @@ def main():
 
         # check for user data updates
         new_user_data = gateway.get_my_user_data()
-        if new_user_data:
+        if new_user_data and enable_rpc:
             rpc.generate_dispatch(new_user_data)
 
+
         # send new rpc activities
-        new_activities = rpc.get_activities()
-        if new_activities is not None and gateway_state == 1:
-            rpc_apps_ids = [d["application_id"] for d in new_activities]
-            game_detection_activities = game_detection.get_activities(force=True) if enable_game_detection else []
-            my_activities = new_activities + [d for d in game_detection_activities if d["application_id"] not in rpc_apps_ids]
-            gateway.update_presence(
-                my_status["status"],
-                custom_status=my_status["custom_status"],
-                custom_status_emoji=my_status["custom_status_emoji"],
-                activities=my_activities,
-                afk=True,   # so other clients can receive notifications
-            )
+        if enable_rpc:
+            rpc_activities, changed = rpc.get_activities()
+            if changed and gateway_state == 1:
+                if enable_game_detection:
+                    game_activities, _ = game_detection.get_activities()
+                    rpc_apps_ids = [d["application_id"] for d in rpc_activities]
+                    my_activities = rpc_activities + [d for d in game_activities if d["application_id"] not in rpc_apps_ids]
+                else:
+                    my_activities = rpc_activities
+                gateway.update_presence(
+                    my_status["status"],
+                    custom_status=my_status["custom_status"],
+                    custom_status_emoji=my_status["custom_status_emoji"],
+                    activities=my_activities,
+                    afk=True,   # so other clients can receive notifications
+                )
 
         # send new detectable games activities
         if enable_game_detection:
-            new_activities = game_detection.get_activities()
-            if new_activities is not None and gateway_state == 1:
-                # if new activities app_id not in rpc activities app_id
-                rpc_activities = rpc.get_activities(force=True)
-                rpc_apps_ids = [d["application_id"] for d in rpc_activities]
-                my_activities = rpc_activities + [d for d in new_activities if d["application_id"] not in rpc_apps_ids]
+            game_activities, changed = game_detection.get_activities()
+            if changed and gateway_state == 1:
+                if enable_rpc:
+                    rpc_activities, _ = rpc.get_activities()
+                    rpc_apps_ids = [d["application_id"] for d in rpc_activities]
+                    my_activities = rpc_activities + [d for d in game_activities if d["application_id"] not in rpc_apps_ids]
+                else:
+                    my_activities = game_activities
                 gateway.update_presence(
                     my_status["status"],
                     custom_status=my_status["custom_status"],

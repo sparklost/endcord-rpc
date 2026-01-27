@@ -100,6 +100,7 @@ class RPC:
         self.changed = False
         self.external = config["rpc_external"]
         self.activities = []
+        self.not_exist = []
         if user["bot"]:
             logger.warning("RPC server cannot be started for bot accounts")
             return
@@ -184,11 +185,19 @@ class RPC:
                     connection.close()
                 return
             app_id = init_data["client_id"]
+
+            if app_id in self.not_exist:
+                if sys.platform == "win32":
+                    win32file.CloseHandle(connection)
+                else:
+                    connection.close()
+                return
+
             logger.debug(f"RPC app id: {app_id}")
-            rpc_data = self.discord.get_rpc_app(app_id)
+            status, rpc_data = self.discord.get_rpc_app(app_id)
             rpc_assets = self.discord.get_rpc_app_assets(app_id)
-            logger.info(f"RPC client connected: {rpc_data["name"]}")
             if rpc_data and rpc_assets:
+                logger.info(f"RPC client connected: {rpc_data["name"]}")
                 send_data(connection, 1, self.dispatch)
                 sent_time = time.time() - (GATEWAY_RATE_LIMIT + 1)
                 prev_activity = None
@@ -300,6 +309,8 @@ class RPC:
                         send_data(connection, op, response)
 
             else:
+                if status == 2:   # not found
+                    self.not_exist.append(app_id)
                 logger.warning("Failed retrieving RPC app data from discord")
         except Exception as e:
             logger.error(e)
@@ -321,6 +332,7 @@ class RPC:
     def server_thread_win(self):
         """Thread that listens for new connections on the named pipe and starts new client_thread for each connection"""
         logger.info("RPC server started")
+        print("RPC server started")
         while self.run:
             try:
                 pipe = win32pipe.CreateNamedPipe(
@@ -350,16 +362,16 @@ class RPC:
             self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.server.bind(DISCORD_SOCKET)
         logger.info("RPC server started")
+        print("RPC server started")
         while self.run:
             self.server.listen(1)
             client, address = self.server.accept()
             threading.Thread(target=self.client_thread, daemon=True, args=(client, )).start()
 
 
-    def get_activities(self, force=False):
-        """Get activities for all connected apps, only when they changed."""
-        if self.changed or force:
-            self.changed = False
-            logger.debug(f"Sending: {json.dumps(self.activities, indent=2)}")
-            return self.activities
-        return None
+    def get_activities(self):
+        """Get activities for all connected apps, and if they changed."""
+        cache = self.changed
+        self.changed = False
+        logger.debug(f"Sending: {json.dumps(self.activities, indent=2)}")
+        return self.activities, cache
