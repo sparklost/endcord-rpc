@@ -6,6 +6,7 @@ import struct
 import sys
 import threading
 import time
+import traceback
 
 if sys.platform == "win32":
     import pywintypes
@@ -198,6 +199,7 @@ class RPC:
             rpc_assets = self.discord.get_rpc_app_assets(app_id)
             if rpc_data and rpc_assets:
                 logger.info(f"RPC client connected: {rpc_data["name"]}")
+                print(f"RPC client connected: {rpc_data["name"]}")
                 send_data(connection, 1, self.dispatch)
                 sent_time = time.time() - (GATEWAY_RATE_LIMIT + 1)
                 prev_activity = None
@@ -207,7 +209,7 @@ class RPC:
                         break
                     logger.debug(f"Received: {json.dumps(data, indent=2)}")
 
-                    if data["cmd"] == "SET_ACTIVITY":
+                    if data["cmd"] == "SET_ACTIVITY" and "activity" in data["args"]:
                         # prevent sending presences too often
                         delay = GATEWAY_RATE_LIMIT_SAME if data["args"]["activity"] == prev_activity else GATEWAY_RATE_LIMIT
                         if time.time() - sent_time < delay:
@@ -294,6 +296,8 @@ class RPC:
                             "nonce": data["nonce"],
                         }
                         send_data(connection, op, response)
+                    elif data["cmd"] == "SET_ACTIVITY":
+                        pass
                     else:
                         # all other commands are currently unimplemented
                         # returning them to client so it can keep running with rich presence only
@@ -312,8 +316,8 @@ class RPC:
                 if status == 2:   # not found
                     self.not_exist.append(app_id)
                 logger.warning("Failed retrieving RPC app data from discord")
-        except Exception as e:
-            logger.error(e)
+        except BaseException as e:
+            logger.error("".join(traceback.format_exception(e)))
 
         # remove presence from list
         if app_id:
@@ -327,6 +331,7 @@ class RPC:
         else:
             connection.close()
         logger.info(f"RPC client disconnected: {rpc_data["name"] if rpc_data else "Unknown"}")
+        print(f"RPC client disconnected: {rpc_data["name"] if rpc_data else "Unknown"}")
 
 
     def server_thread_win(self):
