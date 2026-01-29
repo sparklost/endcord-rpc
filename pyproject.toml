@@ -1,6 +1,6 @@
 [project]
 name = "endcord-rpc"
-version = "1.0.0"
+version = "1.1.0"
 description = "Small RPC server made from endcord parts. Provides Rich Presence and game detection only."
 readme = "README.md"
 requires-python = ">=3.12"
