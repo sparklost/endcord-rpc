@@ -23,6 +23,12 @@ Small RPC server made from parts of [endcord](https://github.com/sparklost/endco
 - [Build](#building) endcord-rpc, standalone executable can be found in `./dist/`  
 
 
+## Disclaimer
+> [!WARNING]
+> Using third-party client is against Discord's Terms of Service and may cause your account to be banned!  
+> **Use endcord-rpc at your own risk!**
+
+
 ## Building
 To see all build script options, run: `uv run build.py -h`.  
 To build into directory, not as a single executable, add `--onedir` flag. Will speed up startup.  

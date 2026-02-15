@@ -420,7 +420,7 @@ class Gateway():
 
     def send_heartbeat(self):
         """Send heartbeat to gateway, if response is not received, triggers reconnect, should be run in a thread"""
-        logger.debug(f"Heartbeater started, interval={self.heartbeat_interval/1000}s")
+        logger.debug(f"Heartbeater started, interval={self.heartbeat_interval/1000} s")
         self.heartbeat_running = True
         self.heartbeat_received = True
         # wait for ready event for some time
