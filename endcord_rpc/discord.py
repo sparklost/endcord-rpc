@@ -229,7 +229,7 @@ class Discord():
         return False
 
 
-    def send_update_activity_session(self, app_id, exe_path, closed, session_id, media_session_id=None, voice_channel_id=None):
+    def update_activity_session(self, app_id, exe_path, closed, session_id, media_session_id=None, voice_channel_id=None):
         """Send update for currently running activity session"""
         message_data = json.dumps({
             "token": self.activity_token,

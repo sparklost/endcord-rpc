@@ -103,6 +103,9 @@ def get_user_processes_diff_linux():
         if "/" not in path:
             continue
 
+        # cleanup path
+        path = path.lower().replace(":", "")
+
         # add to cache and newly added processes
         proc_cache[pid] = [path, True]
         if path not in added:
@@ -161,6 +164,9 @@ def get_user_processes_diff_windows():
         if "/" not in path:
             continue
 
+        # cleanup path
+        path = path.lower().replace(":", "")
+
         # add to cache and newly added processes
         proc_cache[pid] = [path, True]
         if path not in added:
@@ -214,8 +220,11 @@ def get_user_processes_diff_darwin():
             continue
         cmdline = cmdline[0]
 
-        # add to cache and newly added processes
+        # cleanup path
         path = cmdline.replace("\\", "/").replace("\x00", "")
+        path = path.lower().replace(":", "")
+
+        # add to cache and newly added processes
         proc_cache[pid] = [path, True]
         if path not in added:
             added.append(path)
@@ -394,7 +403,7 @@ class GameDetection:
 
                 # when identified app appears
                 # update activity session
-                self.discord.send_update_activity_session(
+                self.discord.update_activity_session(
                     app_id,
                     exe_path=app_path,
                     closed=False,
@@ -426,7 +435,7 @@ class GameDetection:
                     continue
 
                 # update activity session
-                self.discord.send_update_activity_session(
+                self.discord.update_activity_session(
                     app_id,
                     exe_path=app_path,
                     closed=True,
@@ -485,7 +494,7 @@ class GameDetection:
                 continue
 
             # update activity session
-            self.discord.send_update_activity_session(
+            self.discord.update_activity_session(
                 app_id,
                 exe_path=app_path,
                 closed=True,
