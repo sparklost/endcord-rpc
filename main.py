@@ -21,7 +21,7 @@ APP_NAME = "endcord-rpc"
 ERROR_TEXT = "\nUnhandled exception occurred. Please report here: https://github.com/sparklost/endcord-rpc/issues"
 DEFAULT_CONFIG = {
   "token": "",
-  "enable_rpc": True,
+  "rpc": True,
   "game_detection": True,
   "game_list_download_delay": 7,
   "games_blacklist": [],
@@ -73,13 +73,13 @@ def main():
             json.dump(DEFAULT_CONFIG, file, indent=2)
     with open(config_file_path, "r") as f:
         config = json.load(f)
-    host = config["custom_host"]
-    token = config["token"]
-    proxy = config["proxy"]
-    enable_rpc = config["rpc"]
-    enable_game_detection = config["game_detection"]
+    host = config.get("custom_host")
+    token = config.get("token")
+    proxy = config.get("proxy")
+    enable_rpc = config.get("rpc", True)
+    enable_game_detection = config.get("game_detection", True)
     download_delay = config.get("game_list_download_delay", 7)
-    game_detection_blacklist = config["games_blacklist"]
+    game_detection_blacklist = config.get("games_blacklist", [])
     if not token:
         sys.exit(f"Token not specified in config: {config_file_path}")
         logger.error(f"Token not specified in config: {config_file_path}")

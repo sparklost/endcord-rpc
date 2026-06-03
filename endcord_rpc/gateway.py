@@ -23,7 +23,7 @@ except ImportError:
 
 import socks
 import websocket
-from discord_protos import PreloadedUserSettings
+from endcord_rpc import user_settings_pb2
 from google.protobuf.json_format import MessageToDict
 
 DISCORD_HOST = "discord.com"
@@ -340,7 +340,7 @@ class Gateway():
 
                     # get user settings
                     if "user_settings_proto" in data and not self.legacy:
-                        decoded = PreloadedUserSettings.FromString(base64.b64decode(data["user_settings_proto"]))
+                        decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["user_settings_proto"]))
                         self.user_settings_proto = MessageToDict(decoded)
                     else:
                         self.legacy = True
@@ -392,7 +392,7 @@ class Gateway():
                 elif optext == "USER_SETTINGS_PROTO_UPDATE":
                     if data["partial"] or data["settings"]["type"] != 1:
                         continue
-                    decoded = PreloadedUserSettings.FromString(base64.b64decode(data["settings"]["proto"]))
+                    decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["user_settings_proto"]))
                     self.user_settings_proto = MessageToDict(decoded)
                     self.proto_changed = True
 

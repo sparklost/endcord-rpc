@@ -17,7 +17,7 @@ except ImportError:
 import json as json_
 
 import socks
-from discord_protos import FrecencyUserSettings, PreloadedUserSettings
+from endcord_rpc import user_settings_pb2
 from google.protobuf.json_format import MessageToDict
 
 DISCORD_HOST = "discord.com"
@@ -117,7 +117,7 @@ class Discord():
         """
         Get account settings:
         num=1 - General user settings
-        num=2 - Frecency and favorites storage for various things
+        num=2 - frecency and favorites storage for various things - unused
         """
         if self.protos[num-1]:
             return self.protos[num-1]
@@ -134,16 +134,15 @@ class Discord():
             data = json.loads(response.read())["settings"]
             connection.close()
             if num == 1:
-                decoded = PreloadedUserSettings.FromString(base64.b64decode(data))
-            elif num == 2:
-                decoded = FrecencyUserSettings.FromString(base64.b64decode(data))
+                decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data))
+            elif num == 2:   # unused
+                return {}
             else:
                 return {}
             self.protos[num-1] = MessageToDict(decoded)
             return self.protos[num-1]
         logger.error(f"Failed to fetch settings. Response code: {response.status}")
         print(f"Failed to fetch settings. Response code: {response.status}")
-        connection.close()
         return False
 
 
