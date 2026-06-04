@@ -225,7 +225,8 @@ class RPC:
 
                         # add everything thats missing
                         activity["application_id"] = app_id
-                        activity["name"] = rpc_data["name"]
+                        if not activity.get("name"):
+                            activity["name"] = rpc_data["name"]
                         assets = {}
                         for asset_client in activity["assets"]:
 
