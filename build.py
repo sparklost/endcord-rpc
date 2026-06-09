@@ -279,6 +279,7 @@ def build_with_pyinstaller(onedir, print_cmd=False):
 
 def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
     """Build with nuitka"""
+    clang = clang or os.environ.get("CC") == "clang"
     pkgname = PKGNAME
     mode = "--standalone" if onedir else "--onefile"
     compiler = ""
