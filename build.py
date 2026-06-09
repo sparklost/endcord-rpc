@@ -229,7 +229,6 @@ def build_with_pyinstaller(onedir, print_cmd=False):
     mode = "--onedir" if onedir else "--onefile"
     hidden_imports = ["--hidden-import=uuid"]
     exclude_imports = [
-        "--exclude-module=cython",
         "--exclude-module=zstandard",
     ]
     package_data = []
@@ -291,7 +290,6 @@ def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
     hidden_imports = ["--include-module=uuid"]
     # excluding zstandard because its nuitka dependency bu also urllib3 optional dependency, and uses lots of space
     exclude_imports = [
-        "--nofollow-import-to=cython",
         "--nofollow-import-to=zstandard",
         "--nofollow-import-to=google._upb",
     ]
