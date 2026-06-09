@@ -10,6 +10,30 @@ PYTHON_MAX_MINOR = 14
 PYTHON_FREETHREADED = 14
 PYTHON_LAST_SAFE = 13
 
+CUSTOM_CFLAGS = [
+    "-DNDEBUG",
+    "-g0",
+    "-O3",
+    "-march=x86-64",
+    "-mtune=generic",
+    "-fno-semantic-interposition",
+    "-fno-strict-overflow",
+    "-fvisibility=hidden",
+    # "-flto=thin",
+]
+CUSTOM_CXXFLAGS = CUSTOM_CFLAGS
+CUSTOM_LDFLAGS = [
+    "-Wl,-s",
+    "-Wl,-O1",
+    "-Wl,--sort-common",
+    "-Wl,--as-needed",
+    "-Wl,-z,pack-relative-relocs",
+    "-Wl,--exclude-libs,ALL",
+    # "-flto=thin",
+]
+CFLAGS_OLD = os.environ.get("CFLAGS", "")
+CXXFLAGS_OLD = os.environ.get("CFLAGS", "")
+LDFLAGS_OLD = os.environ.get("CFLAGS", "")
 
 def get_app_name():
     """Get app name from pyproject.toml"""
@@ -162,7 +186,6 @@ def force_ujson():
         pass
 
 
-
 def build_third_party_licenses(exclude=[]):
     """Collect and build all lincenses found in venv into THIRD_PARTY_LICENSES.txt file"""
     fprint("Building list of third party licenses")
@@ -176,6 +199,28 @@ def build_third_party_licenses(exclude=[]):
     ]
     subprocess.run(command, check=True)
     subprocess.run(["uv", "pip", "uninstall", "pip-licenses", "prettytable", "wcwidth"], check=True)
+
+
+def setup_compiler(clang, clear=False, overwrite=False, cflags=[], ldflags=[], cxxflags=[]):
+    """Set compiler and its flags in environment variables"""
+    if clang:
+        os.environ["CC"] = "clang"
+        os.environ["CXX"] = "clang++"
+        os.environ["LD"] = "lld"
+    if clear:
+        os.environ["CFLAGS"] = CFLAGS_OLD
+        os.environ["CXXFLAGS"] = CXXFLAGS_OLD
+        os.environ["LDFLAGS"] = LDFLAGS_OLD
+        return [], [], []
+    cflags = ([] if overwrite else CFLAGS_OLD.split(" ")) + CUSTOM_CFLAGS + cflags
+    cxxflags = ([] if overwrite else CXXFLAGS_OLD.split(" ")) + CUSTOM_CXXFLAGS + cxxflags
+    ldflags = ([] if overwrite else LDFLAGS_OLD.split(" ")) + CUSTOM_LDFLAGS + ldflags
+    if shutil.which("lld") and clang:
+        ldflags.append("-fuse-ld=lld")
+    os.environ["CFLAGS"] = " ".join(cflags)
+    os.environ["CXXFLAGS"] = " ".join(cxxflags)
+    os.environ["LDFLAGS"] = " ".join(ldflags)
+    return cflags, cxxflags, ldflags
 
 
 def build_with_pyinstaller(onedir, print_cmd=False):
@@ -251,6 +296,8 @@ def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
     ]
     package_data = []
 
+    setup_compiler(clang)
+
     # options
     if clang:
         os.environ["CFLAGS"] = "-Wno-macro-redefined"
@@ -315,9 +362,9 @@ def parser():
         help="build with nuitka, takes a long time, but more optimized executable",
     )
     parser.add_argument(
-        "--clang",
+        "--noclang",
         action="store_true",
-        help="use clang when building with nuitka",
+        help="script prefers clang if its installed, set this to not use it, or change CC and LD env vars",
     )
     parser.add_argument(
         "--onedir",
@@ -327,7 +374,7 @@ def parser():
     parser.add_argument(
         "--mingw",
         action="store_true",
-        help="use mingw instead msvc on windows, has no effect on Linux and macOS, or with --clang flag",
+        help="use mingw instead msvc on windows, has no effect on Linux and macOS",
     )
     parser.add_argument(
         "--freethreaded",
@@ -359,6 +406,7 @@ def parser():
 
 if __name__ == "__main__":
     args = parser()
+    clang = not (args.noclang or args.mingw)
 
     if args.print_cmd:
         if args.nuitka:

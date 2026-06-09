@@ -60,7 +60,7 @@ jobs:
         run: |
             args=()
             [[ "${{ matrix.nuitka }}" == "true" ]] && args+=("--nuitka")
-            [[ "${{ matrix.clang }}" == "true" ]] && args+=("--clang")
+            [[ "${{ matrix.clang }}" != "true" ]] && args+=("--noclang")
             uv run build.py "${args[@]}"
 
       - name: Make binaries executable
