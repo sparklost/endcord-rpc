@@ -17,6 +17,8 @@ import json as json_
 
 if sys.platform != "linux":
     import psutil
+if "bsd" in sys.platform:
+    sys.platform = "linux"
 
 GAME_DETECTION_DELAY = 5
 MAX_CACHE_AGE = 604800   # 7 days
@@ -70,7 +72,7 @@ def get_user_processes_diff_linux():
 
         # read and check uid
         try:
-            with open(f"/proc/{pid}/status", "r", encoding="utf-8") as f:
+            with open(f"/proc/{pid}/status", "r") as f:   # noqa
                 uid = None
                 for line in f:
                     if line.startswith("Uid:"):
@@ -263,6 +265,18 @@ def find_detectable_apps_file(directory):
     return path, etag, save_time
 
 
+def delete_detectable_apps_files(directory, exception_file_path):
+    """Delete all files with given prefix and suffix"""
+    directory = os.path.expanduser(directory)
+    abs_exception_path = os.path.abspath(exception_file_path)
+    for file_path in glob.glob(os.path.join(directory, "detectable_apps_*.ndjson")):
+        if os.path.isfile(file_path) and os.path.abspath(file_path) != abs_exception_path:
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+
+
 def find_app(proc_path, list_path, my_platform):
     """Search the detectable applications list and find the app"""
     proc_path = proc_path.lower()
@@ -314,7 +328,7 @@ class GameDetection:
     def main(self):
         """
         Main thread that:
-        - checks and downloads detetcable applications list on startup
+        - checks and downloads detectable applications list on startup
         - checks for added/removed application processes
         - detects games
         - builds and stores/removes activity for each game
@@ -344,7 +358,7 @@ class GameDetection:
                 logger.info(f'Downloaded new detectable applications list with ETag: W/"{etag}"')
                 print(f'Downloaded new detectable applications list with ETag: W/"{etag}"')
                 if old_path:
-                    os.remove(old_path)
+                    delete_detectable_apps_files(self.config_path, path)
             del (old_path, old_etag)
         else:
             path = old_path
@@ -395,7 +409,7 @@ class GameDetection:
                     self.cache[proc_path] = [app_id, app_name, app_path, int(time.time())]
                     cache_changed = True
 
-                # skip unindentified
+                # skip unidentified
                 if not app_id:
                     continue
                 if app_id in self.blacklist:

@@ -64,7 +64,7 @@ logging.basicConfig(
 
 def main():
     """Main app function"""
-    global gateway, run
+    global gateway, run, rpc
 
     # load config
     config_file_path = os.path.join(config_path, "config.json")
@@ -268,7 +268,8 @@ def main():
 
 def sigint_handler(_signum, _frame):
     """Handling Ctrl-C event"""
-    global gateway, run
+    global gateway, run, rpc
+    rpc.stop()
     if gateway:
         gateway.disconnect_ws()
     run = False

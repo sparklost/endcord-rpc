@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+from datetime import datetime
 
 PYTHON_MAX_MINOR = 14
 PYTHON_FREETHREADED = 14
@@ -13,8 +14,7 @@ PYTHON_LAST_SAFE = 13
 CUSTOM_CFLAGS = [
     "-DNDEBUG",
     "-g0",
-    "-O3",
-    "-march=x86-64",
+    "-O2",
     "-mtune=generic",
     "-fno-semantic-interposition",
     "-fno-strict-overflow",
@@ -30,6 +30,9 @@ CUSTOM_LDFLAGS = [
     "-Wl,-z,pack-relative-relocs",
     "-Wl,--exclude-libs,ALL",
     # "-flto=thin",
+]
+UNSAFE_FLAGS = [   # unsafe to use when building some libraries
+    "-fvisibility=hidden",
 ]
 CFLAGS_OLD = os.environ.get("CFLAGS", "")
 CXXFLAGS_OLD = os.environ.get("CFLAGS", "")
@@ -99,12 +102,12 @@ def supports_color():
     return os.getenv("TERM", "") != "dumb"
 
 
-PKGNAME = get_app_name()
-PKGVER = get_version_number()
+APP_NAME = get_app_name()
+APP_VERSION = get_version_number()
 USE_COLOR = supports_color()
 
 
-def fprint(text, color_code="\033[1;35m", prefix=f"[{PKGNAME.capitalize()} Build Script]: "):
+def fprint(text, color_code="\033[1;35m", prefix=f"[{APP_NAME.capitalize()} Build Script]: "):
     """Print colored text prefixed with text, default is light purple"""
     if USE_COLOR:
         print(f"{color_code}{prefix}{text}\033[0m")
@@ -202,31 +205,40 @@ def build_third_party_licenses(exclude=[]):
     subprocess.run(["uv", "pip", "uninstall", "pip-licenses", "prettytable", "wcwidth"], check=True)
 
 
-def setup_compiler(clang, clear=False, overwrite=False, cflags=[], ldflags=[], cxxflags=[]):
+def setup_compiler(clang, clear=False, overwrite=False, cflags=[], ldflags=[], cxxflags=[], safe=False, lld=True, exclude=True):
     """Set compiler and its flags in environment variables"""
     if clang:
         os.environ["CC"] = "clang"
         os.environ["CXX"] = "clang++"
-        os.environ["LD"] = "lld"
+        if shutil.which("lld") and clang and lld:
+            os.environ["LD"] = "lld"
     if clear:
         os.environ["CFLAGS"] = CFLAGS_OLD
         os.environ["CXXFLAGS"] = CXXFLAGS_OLD
         os.environ["LDFLAGS"] = LDFLAGS_OLD
         return [], [], []
-    cflags = ([] if overwrite else CFLAGS_OLD.split(" ")) + CUSTOM_CFLAGS + cflags
+    unsafe_flags = UNSAFE_FLAGS
+    if sys.platform == "win32" and not clang:   # unsupported flags in cl
+        unsafe_flags += ["-g0", "-O3", "-mtune=generic", "-fno-semantic-interposition", "-fno-strict-overflow"]
+        safe = True
+    skip_mtune = "-mtune=" in CFLAGS_OLD
+    custom_cflags = [item for item in CUSTOM_CFLAGS if item not in unsafe_flags and not (skip_mtune and item.starswith("-mtune"))] if safe else CUSTOM_CFLAGS
+    custom_ldflgs = [item for item in CUSTOM_LDFLAGS if "exclude-libs" not in item] if not exclude else CUSTOM_LDFLAGS
+    cflags = ([] if overwrite else CFLAGS_OLD.split(" ")) + custom_cflags + cflags
     cxxflags = ([] if overwrite else CXXFLAGS_OLD.split(" ")) + CUSTOM_CXXFLAGS + cxxflags
-    ldflags = ([] if overwrite else LDFLAGS_OLD.split(" ")) + CUSTOM_LDFLAGS + ldflags
-    if shutil.which("lld") and clang:
+    ldflags = ([] if overwrite else LDFLAGS_OLD.split(" ")) + custom_ldflgs + ldflags
+    if shutil.which("lld") and clang and lld:
         ldflags.append("-fuse-ld=lld")
     os.environ["CFLAGS"] = " ".join(cflags)
     os.environ["CXXFLAGS"] = " ".join(cxxflags)
     os.environ["LDFLAGS"] = " ".join(ldflags)
+    if not lld:
+        os.environ["LD"] = ""
     return cflags, cxxflags, ldflags
 
 
 def build_with_pyinstaller(onedir, print_cmd=False):
     """Build with pyinstaller"""
-    pkgname = PKGNAME
     mode = "--onedir" if onedir else "--onefile"
     hidden_imports = ["--hidden-import=uuid"]
     exclude_imports = [
@@ -253,7 +265,7 @@ def build_with_pyinstaller(onedir, print_cmd=False):
         *options,
         "--noconfirm",
         "--clean",
-        f"--name={pkgname}",
+        f"--name={APP_NAME}",
         "main.py",
     ]
     cmd = [arg for arg in cmd if arg != ""]
@@ -270,24 +282,27 @@ def build_with_pyinstaller(onedir, print_cmd=False):
     # cleanup
     fprint("Cleaning up")
     try:
-        os.remove(f"{pkgname}.spec")
+        os.remove(f"{APP_NAME}.spec")
         shutil.rmtree("build")
     except FileNotFoundError:
         pass
-    fprint(f"Finished building {pkgname}")
+    fprint(f"Finished building {APP_NAME}")
 
 
 def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
     """Build with nuitka"""
     clang = clang or os.environ.get("CC") == "clang"
-    pkgname = PKGNAME
-    mode = "--standalone" if onedir else "--onefile"
+    mode = "standalone" if onedir else "onefile"
     compiler = ""
     if clang:
         compiler = "--clang"
     elif mingw:
         compiler = "--mingw64"
-    python_flags = ["--python-flag=-OO"]
+    python_flags = [
+        "--python-flag=no_asserts",
+        "--python-flag=no_docstrings",
+        "--python-flag=no_site",
+    ]
     hidden_imports = ["--include-module=uuid"]
     # excluding zstandard because its nuitka dependency bu also urllib3 optional dependency, and uses lots of space
     exclude_imports = [
@@ -296,11 +311,7 @@ def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
     ]
     package_data = []
 
-    setup_compiler(clang)
-
-    # options
-    if clang:
-        os.environ["CFLAGS"] = "-Wno-macro-redefined"
+    setup_compiler(clang, exclude=False)
 
     # platform-specific
     if sys.platform == "linux":
@@ -309,24 +320,29 @@ def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
         options = ["--assume-yes-for-downloads"]
     elif sys.platform == "darwin":
         options = [
-            f"--macos-app-name={PKGNAME}",
-            f"--macos-app-version={get_version_number()}",
-            "--macos-app-protected-resource=NSMicrophoneUsageDescription:Microphone access for recording voice message.",
+            f"--macos-app-name={APP_NAME}",
+            f"--macos-app-version={APP_VERSION}",
         ]
 
     # prepare command and run it
     cmd = [
         "uv", "run", "python", "-m", "nuitka",
-        mode,
+        f"--mode={mode}",
         compiler,
         *python_flags,
         *hidden_imports,
         *exclude_imports,
         *package_data,
         *options,
+        "--no-prefer-source-code",
+        "--onefile-tempdir-spec={TEMP}/endcord-rpc_{PID}",
+        "--company-name=SparkLost",
+        "--product-name=endcord-rpc",
+        f"--file-version={APP_VERSION}", f"--product-version={APP_VERSION}",
+        f"--copyright=Copyright (C) 2025-{datetime.now().year} SparkLost",
         "--remove-output",
         "--output-dir=dist",
-        f"--output-filename={pkgname}",
+        f"--output-filename={APP_NAME}",
         "main.py",
     ]
     cmd = [arg for arg in cmd if arg != ""]
@@ -346,14 +362,14 @@ def build_with_nuitka(onedir, clang, mingw, print_cmd=False):
         shutil.rmtree("build")
     except FileNotFoundError:
         pass
-    fprint(f"Finished building {pkgname}")
+    fprint(f"Finished building {APP_NAME}")
 
 
 def parser():
     """Setup argument parser for CLI"""
     parser = argparse.ArgumentParser(
         prog="build.py",
-        description=f"build script for {PKGNAME}",
+        description=f"build script for {APP_NAME}",
     )
     parser._positionals.title = "arguments"
     parser.add_argument(

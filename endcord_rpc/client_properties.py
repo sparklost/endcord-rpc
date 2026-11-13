@@ -87,6 +87,7 @@ def get_default_properties():
         "os": operating_system,
         "browser": "Discord Client",
         "release_channel": "stable",
+        "client_version": CLIENT_VERSION,
         "os_version": os_version,
         "os_arch": arch,
         "app_arch": arch,
@@ -112,7 +113,7 @@ def get_default_properties():
 
 
 def generate_launch_signature():
-    """Gebnerate launch singature"""
+    """Generate launch signature"""
     bits = 0b00000000100000000001000000010000000010000001000000001000000000000010000010000001000000000100000000000001000000000000100000000000
     launch_signature = uuid.uuid4().int & (~bits & ((1 << 128) - 1))
     return str(uuid.UUID(int=launch_signature))
@@ -148,7 +149,7 @@ def add_user_agent(data, user_agent):
         if match:
             browser_version = match.group(1)
     elif "Electron" in user_agent:
-        match = re.search(r"Elelctron/([\d\.]+)", user_agent)
+        match = re.search(r"Electron/([\d\.]+)", user_agent)
         if match:
             browser_version = match.group(1)
     else:
