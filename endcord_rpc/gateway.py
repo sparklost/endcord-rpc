@@ -402,9 +402,9 @@ class Gateway():
                     self.status_changed = True
 
                 elif optext == "USER_SETTINGS_PROTO_UPDATE":
-                    if data["partial"] or data["settings"]["type"] != 1 or "user_settings_proto" not in data:
+                    if data["partial"] or data["settings"]["type"] != 1:
                         continue
-                    decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["user_settings_proto"]))
+                    decoded = user_settings_pb2.UserSettings.FromString(base64.b64decode(data["settings"]["proto"]))
                     self.user_settings_proto = MessageToDict(decoded)
                     self.proto_changed = True
 
